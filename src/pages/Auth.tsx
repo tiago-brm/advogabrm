@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { useLogo } from "@/hooks/useLogo";
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
@@ -16,6 +17,7 @@ const Auth = () => {
   const [fullName, setFullName] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
+  const logoSrc = useLogo();
 
   useEffect(() => {
     // Check if user is already logged in
@@ -122,8 +124,18 @@ const Auth = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">AdvogaBRM</CardTitle>
+        <CardHeader className="text-center pb-4">
+          {logoSrc && (
+            <div className="flex justify-center mb-3">
+              <img 
+                src={logoSrc} 
+                alt="AdvogaBRM" 
+                className="max-h-16 w-auto object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            </div>
+          )}
+          {!logoSrc && <CardTitle className="text-2xl font-bold">AdvogaBRM</CardTitle>}
           <CardDescription>
             Sistema de Gestão para Escritórios de Advocacia
           </CardDescription>
