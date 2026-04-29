@@ -22,13 +22,15 @@ export function TenantSwitcher() {
       .from("tenants")
       .select("id, nome, logo_url, logo_url_dark, primary_color_hex")
       .order("nome")
-      .then(({ data }) => {
-        if (data) {
-          setAllTenants(data as Tenant[]);
-        }
+      .then(({ data, error }) => {
+        if (error) { console.error("TenantSwitcher: erro ao buscar tenants", error); return; }
+        if (data) setAllTenants(data as Tenant[]);
       });
 
-    if (localStorage.getItem(STORAGE_KEY)) setIsFullSwitch(true);
+    // Só considera full-switch ativo se a chave está no localStorage
+    // E o tenant atual no banco é realmente diferente do original
+    const storedOriginal = localStorage.getItem(STORAGE_KEY);
+    if (storedOriginal) setIsFullSwitch(true);
   }, [role]);
 
   // Inicializa seleção com o tenant real
@@ -58,19 +60,19 @@ export function TenantSwitcher() {
     if (t) previewTenant(t);
   }
 
-  // ── Switch real (dados via RLS) ───────────────────────────────
   async function handleFullSwitch() {
     if (isSameAsReal || switching) return;
     setSwitching(true);
     try {
-      if (!localStorage.getItem(STORAGE_KEY)) {
-        localStorage.setItem(STORAGE_KEY, realTenant!.id);
-      }
       const { error } = await supabase.rpc("superadmin_switch_tenant", {
         target_tenant_id: selectedId,
       });
       if (error) throw error;
 
+      // Salva o tenant original APENAS após sucesso do RPC
+      if (!localStorage.getItem(STORAGE_KEY)) {
+        localStorage.setItem(STORAGE_KEY, realTenant!.id);
+      }
       setIsFullSwitch(true);
       previewTenant(null);
       await refreshTenant();
