@@ -30,94 +30,50 @@ import {
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/contexts/TenantContext";
-import { useLogo } from "@/hooks/useLogo";
+import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
+
 const menuItems = [
-  {
-    title: "Dashboard",
-    url: "/",
-    icon: Home,
-  },
-  {
-    title: "Clientes",
-    url: "/clientes",
-    icon: Users,
-  },
-  {
-    title: "Processos",
-    url: "/processos",
-    icon: Briefcase,
-  },
-  {
-    title: "Consulta Datajud",
-    url: "/consulta-processos",
-    icon: Search,
-  },
-  {
-    title: "Audiências",
-    url: "/audiencias",
-    icon: Calendar,
-  },
-  {
-    title: "Tarefas",
-    url: "/tarefas",
-    icon: Clock,
-  },
-  {
-    title: "Documentos",
-    url: "/documentos",
-    icon: FileText,
-  },
+  { title: "Dashboard", url: "/", icon: Home },
+  { title: "Clientes", url: "/clientes", icon: Users },
+  { title: "Processos", url: "/processos", icon: Briefcase },
+  { title: "Consulta Datajud", url: "/consulta-processos", icon: Search },
+  { title: "Audiências", url: "/audiencias", icon: Calendar },
+  { title: "Tarefas", url: "/tarefas", icon: Clock },
+  { title: "Documentos", url: "/documentos", icon: FileText },
 ];
+
 const secondaryItems = [
-  {
-    title: "Agenda",
-    url: "/agenda",
-    icon: CalendarDays,
-  },
-  {
-    title: "Equipe",
-    url: "/equipe",
-    icon: UserCheck,
-  },
-  {
-    title: "Financeiro",
-    url: "/financeiro",
-    icon: DollarSign,
-  },
-  {
-    title: "Relatórios",
-    url: "/relatorios",
-    icon: BarChart3,
-  },
-  {
-    title: "Mensagens",
-    url: "/mensagens",
-    icon: MessageSquare,
-  },
+  { title: "Agenda", url: "/agenda", icon: CalendarDays },
+  { title: "Equipe", url: "/equipe", icon: UserCheck },
+  { title: "Financeiro", url: "/financeiro", icon: DollarSign },
+  { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
+  { title: "Mensagens", url: "/mensagens", icon: MessageSquare },
 ];
+
 export function AppSidebar() {
   const location = useLocation();
   const { signOut, user } = useAuth();
   const { tenant } = useTenant();
-  const logoSrc = useLogo(tenant?.logo_url);
+  const { resolvedTheme } = useTheme();
 
-  const handleSignOut = async () => {
-    await signOut();
-  };
+  // Seleciona a logo correta por tema
+  const isDark = resolvedTheme === "dark";
+  const tenantLogo = isDark ? (tenant?.logo_url_dark || tenant?.logo_url) : tenant?.logo_url;
+  // Logo da BRM para o rodapé
+  const brmLogo = isDark ? "/logos/logo-dark.png" : "/logos/logo-light.png";
+
   return (
     <Sidebar className="border-r border-border/50">
-      <SidebarHeader className="p-6">
-        <div className="flex items-center gap-3">
-          {logoSrc ? (
-            <img 
-              src={logoSrc} 
-              alt={tenant?.nome || "AdvogaBRM"} 
-              className="max-h-12 w-auto object-contain"
+      <SidebarHeader className="p-4 pb-3">
+        <div className="flex items-center gap-3 min-h-[56px]">
+          {tenantLogo ? (
+            <img
+              src={tenantLogo}
+              alt={tenant?.nome || "AdvogaBRM"}
+              className="max-h-14 w-full object-contain object-left"
               onError={(e) => {
-                // Se a imagem não carregar (ex: logo ainda não colocada na pasta),
-                // esconde e mostra o fallback com ícone
-                (e.target as HTMLImageElement).style.display = 'none';
+                (e.target as HTMLImageElement).style.display = "none";
               }}
             />
           ) : (
@@ -126,7 +82,7 @@ export function AppSidebar() {
                 <Gavel className="w-4 h-4 text-primary-foreground" />
               </div>
               <div>
-                <h2 className="text-lg font-bold leading-tight">{tenant?.nome || "AdvogaBRM"}</h2>
+                <h2 className="text-base font-bold leading-tight">{tenant?.nome || "AdvogaBRM"}</h2>
                 <p className="text-xs text-muted-foreground">Sistema Jurídico</p>
               </div>
             </>
@@ -145,11 +101,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    className={
-                      location.pathname === item.url
-                        ? "bg-primary/10 text-primary"
-                        : ""
-                    }
+                    className={location.pathname === item.url ? "bg-primary/10 text-primary" : ""}
                   >
                     <Link to={item.url} className="flex items-center gap-3">
                       <item.icon className="w-4 h-4" />
@@ -172,11 +124,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    className={
-                      location.pathname === item.url
-                        ? "bg-primary/10 text-primary"
-                        : ""
-                    }
+                    className={location.pathname === item.url ? "bg-primary/10 text-primary" : ""}
                   >
                     <Link to={item.url} className="flex items-center gap-3">
                       <item.icon className="w-4 h-4" />
@@ -199,17 +147,28 @@ export function AppSidebar() {
         </SidebarMenuButton>
 
         <div className="pt-2 border-t">
-          <p className="text-xs text-muted-foreground mb-2 px-2">
-            {user?.email}
-          </p>
+          <p className="text-xs text-muted-foreground mb-2 px-2 truncate">{user?.email}</p>
           <Button
             variant="ghost"
-            onClick={handleSignOut}
+            onClick={signOut}
             className="w-full justify-start h-8 px-2"
           >
             <LogOut className="w-4 h-4 mr-2" />
             Sair
           </Button>
+        </div>
+
+        {/* Powered by BRM Solutions */}
+        <div className="pt-2 border-t flex items-center justify-center gap-1.5 opacity-50 hover:opacity-80 transition-opacity">
+          <img
+            src={brmLogo}
+            alt="BRM Solutions"
+            className="h-4 w-auto object-contain"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+            Powered by BRM Solutions
+          </span>
         </div>
       </SidebarFooter>
     </Sidebar>

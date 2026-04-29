@@ -2,10 +2,11 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-type Tenant = {
+export type Tenant = {
   id: string;
   nome: string;
-  logo_url: string | null;
+  logo_url: string | null;       // logo tema claro
+  logo_url_dark: string | null;  // logo tema escuro
   primary_color_hex: string | null;
 };
 
@@ -35,15 +36,11 @@ function hexToHslString(hex: string): string {
     g = parseInt(hex.substring(3, 5), 16);
     b = parseInt(hex.substring(5, 7), 16);
   }
-  r /= 255;
-  g /= 255;
-  b /= 255;
+  r /= 255; g /= 255; b /= 255;
   let cmin = Math.min(r, g, b),
-      cmax = Math.max(r, g, b),
-      delta = cmax - cmin,
-      h = 0,
-      s = 0,
-      l = 0;
+    cmax = Math.max(r, g, b),
+    delta = cmax - cmin,
+    h = 0, s = 0, l = 0;
 
   if (delta === 0) h = 0;
   else if (cmax === r) h = ((g - b) / delta) % 6;
@@ -87,13 +84,13 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         if (profile.tenant_id) {
           const { data: tenantData } = await supabase
             .from("tenants")
-            .select("*")
+            .select("id, nome, logo_url, logo_url_dark, primary_color_hex")
             .eq("id", profile.tenant_id)
             .single();
-          
+
           if (tenantData) {
             setTenant(tenantData as Tenant);
-            
+
             // Apply Dynamic Branding
             if (tenantData.primary_color_hex) {
               const hsl = hexToHslString(tenantData.primary_color_hex);
