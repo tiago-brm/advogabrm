@@ -149,9 +149,25 @@ CREATE POLICY "SUPER_ADMIN can read audit_log" ON public.audit_log
   FOR SELECT USING (public.get_auth_role() = 'SUPER_ADMIN');
 
 -- Função de auditoria
+-- Usa JSONB para extrair campos dinamicamente, evitando erro quando
+-- a tabela não tem tenant_id (ex: a própria tabela tenants)
 CREATE OR REPLACE FUNCTION public.log_audit()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_row      JSONB;
+  v_tenant_id UUID;
+  v_record_id UUID;
 BEGIN
+  -- Pega o registro principal dependendo da operação
+  v_row := CASE
+    WHEN TG_OP = 'DELETE' THEN row_to_json(OLD)::jsonb
+    ELSE row_to_json(NEW)::jsonb
+  END;
+
+  -- Extrai tenant_id e id via JSONB (retorna NULL se o campo não existir)
+  v_tenant_id := (v_row->>'tenant_id')::UUID;
+  v_record_id := (v_row->>'id')::UUID;
+
   INSERT INTO public.audit_log (
     table_name, operation, user_id, tenant_id,
     record_id, old_data, new_data
@@ -159,14 +175,8 @@ BEGIN
     TG_TABLE_NAME,
     TG_OP,
     auth.uid(),
-    CASE 
-      WHEN TG_OP = 'DELETE' THEN (OLD.tenant_id)
-      ELSE (NEW.tenant_id)
-    END,
-    CASE 
-      WHEN TG_OP = 'DELETE' THEN (OLD.id)
-      ELSE (NEW.id)
-    END,
+    v_tenant_id,
+    v_record_id,
     CASE WHEN TG_OP IN ('UPDATE', 'DELETE') THEN row_to_json(OLD)::jsonb ELSE NULL END,
     CASE WHEN TG_OP IN ('INSERT', 'UPDATE') THEN row_to_json(NEW)::jsonb ELSE NULL END
   );
