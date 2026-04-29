@@ -9,18 +9,10 @@ import { toast } from "sonner";
 
 const STORAGE_KEY = "brm_superadmin_original_tenant_id";
 
-/**
- * TenantSwitcher — exclusivo para SUPER_ADMIN.
- *
- * Dois modos:
- * 1. "Visualizar" (preview): troca apenas branding (cores/logo) no frontend.
- * 2. "Acessar" (switch completo): atualiza profiles.tenant_id no banco
- *    → RLS filtra dados reais daquele escritório (processos, clientes, etc.)
- *    → Salva o tenant original no localStorage para poder voltar.
- */
 export function TenantSwitcher() {
-  const { role, realTenant, tenant, isPreviewMode, previewTenant, refreshTenant } = useTenant();
+  const { role, realTenant, isPreviewMode, previewTenant, refreshTenant } = useTenant();
   const [allTenants, setAllTenants] = useState<Tenant[]>([]);
+  const [selectedId, setSelectedId] = useState<string>("");   // tenant escolhido no dropdown
   const [switching, setSwitching] = useState(false);
   const [isFullSwitch, setIsFullSwitch] = useState(false);
 
@@ -30,59 +22,71 @@ export function TenantSwitcher() {
       .from("tenants")
       .select("id, nome, logo_url, logo_url_dark, primary_color_hex")
       .order("nome")
-      .then(({ data }) => { if (data) setAllTenants(data as Tenant[]); });
+      .then(({ data }) => {
+        if (data) {
+          setAllTenants(data as Tenant[]);
+        }
+      });
 
-    // Verifica se há uma sessão de switch ativa
-    const originalId = localStorage.getItem(STORAGE_KEY);
-    if (originalId) setIsFullSwitch(true);
+    if (localStorage.getItem(STORAGE_KEY)) setIsFullSwitch(true);
   }, [role]);
+
+  // Inicializa seleção com o tenant real
+  useEffect(() => {
+    if (realTenant && !selectedId) setSelectedId(realTenant.id);
+  }, [realTenant]);
 
   if (role !== "SUPER_ADMIN" || allTenants.length <= 1) return null;
 
-  const originalTenantId = localStorage.getItem(STORAGE_KEY);
-  const currentId = tenant?.id ?? "";
+  const isSameAsReal = selectedId === realTenant?.id;
+  const originalTenantId = localStorage.getItem(STORAGE_KEY) ?? realTenant?.id;
 
-  // ── Troca apenas visual (preview) ─────────────────────────────
-  function handlePreview(id: string) {
-    if (isFullSwitch) return; // durante switch real, não mistura preview
-    const selected = allTenants.find((t) => t.id === id);
-    if (!selected || selected.id === realTenant?.id) {
-      previewTenant(null);
-    } else {
-      previewTenant(selected);
+  // ── Seleção no dropdown — só muda estado local ────────────────
+  function handleDropdownChange(id: string) {
+    setSelectedId(id);
+    // Se já estava em preview, atualiza o preview imediatamente
+    if (isPreviewMode) {
+      const t = allTenants.find((t) => t.id === id);
+      previewTenant(t?.id === realTenant?.id ? null : t ?? null);
     }
   }
 
-  // ── Switch completo (dados reais via RLS) ─────────────────────
-  async function handleFullSwitch(id: string) {
-    if (id === currentId) return;
+  // ── Preview visual apenas ─────────────────────────────────────
+  function handlePreview() {
+    if (isSameAsReal) { previewTenant(null); return; }
+    const t = allTenants.find((t) => t.id === selectedId);
+    if (t) previewTenant(t);
+  }
+
+  // ── Switch real (dados via RLS) ───────────────────────────────
+  async function handleFullSwitch() {
+    if (isSameAsReal || switching) return;
     setSwitching(true);
     try {
-      // Salva o tenant original (uma só vez)
       if (!localStorage.getItem(STORAGE_KEY)) {
         localStorage.setItem(STORAGE_KEY, realTenant!.id);
       }
-
       const { error } = await supabase.rpc("superadmin_switch_tenant", {
-        target_tenant_id: id,
+        target_tenant_id: selectedId,
       });
       if (error) throw error;
 
       setIsFullSwitch(true);
-      previewTenant(null); // limpa qualquer preview visual
-      await refreshTenant(); // recarrega contexto com novo tenant
-      toast.success(`Acessando escritório: ${allTenants.find((t) => t.id === id)?.nome}`);
+      previewTenant(null);
+      await refreshTenant();
+      const nome = allTenants.find((t) => t.id === selectedId)?.nome;
+      toast.success(`Acessando: ${nome}`);
     } catch (err: any) {
-      toast.error(`Erro ao trocar: ${err.message}`);
+      toast.error(`Erro: ${err.message}`);
     } finally {
       setSwitching(false);
     }
   }
 
-  // ── Volta ao tenant original ──────────────────────────────────
-  async function handleReturnToOriginal() {
+  // ── Voltar ao tenant original ─────────────────────────────────
+  async function handleReturn() {
     const originalId = localStorage.getItem(STORAGE_KEY);
-    if (!originalId) return;
+    if (!originalId || switching) return;
     setSwitching(true);
     try {
       const { error } = await supabase.rpc("superadmin_switch_tenant", {
@@ -91,92 +95,79 @@ export function TenantSwitcher() {
       if (error) throw error;
       localStorage.removeItem(STORAGE_KEY);
       setIsFullSwitch(false);
+      setSelectedId(originalId);
       previewTenant(null);
       await refreshTenant();
       toast.success("Voltou ao seu escritório.");
     } catch (err: any) {
-      toast.error(`Erro ao voltar: ${err.message}`);
+      toast.error(`Erro: ${err.message}`);
     } finally {
       setSwitching(false);
     }
   }
 
   return (
-    <div className="space-y-1.5">
-      {/* Badges de status */}
+    <div className="space-y-1.5 mt-1">
+      {/* Badge de status */}
       {isFullSwitch && (
-        <div className="flex items-center justify-between px-0.5">
+        <div className="flex items-center justify-between">
           <Badge className="text-[10px] bg-orange-500/15 text-orange-600 border-orange-400">
             <ArrowLeftRight className="w-3 h-3 mr-1" /> Acessando escritório
           </Badge>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-5 text-[10px] px-1 text-muted-foreground hover:text-foreground"
-            onClick={handleReturnToOriginal}
-            disabled={switching}
-          >
+          <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1" onClick={handleReturn} disabled={switching}>
             {switching ? <Loader2 className="w-3 h-3 animate-spin" /> : <CornerUpLeft className="w-3 h-3 mr-1" />}
             Sair
           </Button>
         </div>
       )}
       {isPreviewMode && !isFullSwitch && (
-        <div className="flex items-center justify-between px-0.5">
+        <div className="flex items-center justify-between">
           <Badge variant="outline" className="text-[10px] text-yellow-600 border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
-            <Eye className="w-3 h-3 mr-1" /> Visualizando
+            <Eye className="w-3 h-3 mr-1" /> Modo visual
           </Badge>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-5 text-[10px] px-1 text-muted-foreground"
-            onClick={() => previewTenant(null)}
-          >
+          <Button variant="ghost" size="sm" className="h-5 text-[10px] px-1" onClick={() => { previewTenant(null); setSelectedId(realTenant?.id ?? ""); }}>
             <CornerUpLeft className="w-3 h-3 mr-1" /> Sair
           </Button>
         </div>
       )}
 
-      {/* Seletor */}
-      <Select value={currentId} onValueChange={isFullSwitch ? handleFullSwitch : handlePreview}>
-        <SelectTrigger className="h-8 text-xs" disabled={switching}>
-          {switching
-            ? <span className="flex items-center gap-1 text-muted-foreground"><Loader2 className="w-3 h-3 animate-spin" /> Trocando...</span>
-            : <SelectValue placeholder="Selecionar escritório..." />}
+      {/* Dropdown */}
+      <Select value={selectedId} onValueChange={handleDropdownChange} disabled={switching}>
+        <SelectTrigger className="h-8 text-xs">
+          <SelectValue placeholder="Selecionar escritório..." />
         </SelectTrigger>
         <SelectContent>
-          {allTenants.map((t) => {
-            const isOriginal = t.id === originalTenantId || (!originalTenantId && t.id === realTenant?.id);
-            return (
-              <SelectItem key={t.id} value={t.id} className="text-xs">
-                {isOriginal ? `⭐ ${t.nome}` : t.nome}
-              </SelectItem>
-            );
-          })}
+          {allTenants.map((t) => (
+            <SelectItem key={t.id} value={t.id} className="text-xs">
+              {t.id === (originalTenantId) ? `⭐ ${t.nome}` : t.nome}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
 
-      {/* Botões de modo — só quando não está em full-switch */}
+      {/* Botões de ação */}
       {!isFullSwitch && (
         <div className="flex gap-1">
           <Button
-            size="sm"
-            variant="ghost"
-            className="flex-1 h-6 text-[10px] text-muted-foreground"
+            size="sm" variant="outline"
+            className="flex-1 h-7 text-[10px]"
+            onClick={handlePreview}
+            disabled={isSameAsReal || switching}
             title="Visualiza branding (cores/logo) sem trocar dados"
-            onClick={() => handlePreview(currentId)}
           >
-            <Eye className="w-3 h-3 mr-1" /> Preview
+            <Eye className="w-3 h-3 mr-1" /> Visualizar
           </Button>
           <Button
-            size="sm"
-            variant="ghost"
-            className="flex-1 h-6 text-[10px] text-muted-foreground"
-            title="Acessa dados reais desse escritório (processos, clientes, etc.)"
-            onClick={() => handleFullSwitch(currentId === realTenant?.id ? allTenants.find(t => t.id !== realTenant?.id)?.id ?? "" : currentId)}
-            disabled={switching || currentId === realTenant?.id}
+            size="sm" variant="default"
+            className="flex-1 h-7 text-[10px]"
+            onClick={handleFullSwitch}
+            disabled={isSameAsReal || switching}
+            title="Acessa dados reais desse escritório via RLS"
           >
-            <ArrowLeftRight className="w-3 h-3 mr-1" /> Acessar
+            {switching
+              ? <Loader2 className="w-3 h-3 animate-spin mr-1" />
+              : <ArrowLeftRight className="w-3 h-3 mr-1" />}
+            Acessar
           </Button>
         </div>
       )}
