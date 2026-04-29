@@ -28,7 +28,7 @@ DECLARE
 BEGIN
   -- Verificar se já existe um tenant para evitar erros
   IF NOT EXISTS (SELECT 1 FROM public.tenants LIMIT 1) THEN
-    INSERT INTO public.tenants (nome) VALUES ('Advoga PRO Default') RETURNING id INTO default_tenant_id;
+    INSERT INTO public.tenants (nome) VALUES ('AdvogaBRM Default') RETURNING id INTO default_tenant_id;
     
     -- Associar os perfis existentes ao tenant padrão e dar a eles o papel MASTER (ou SUPER_ADMIN)
     UPDATE public.profiles SET tenant_id = default_tenant_id, role = 'SUPER_ADMIN';
