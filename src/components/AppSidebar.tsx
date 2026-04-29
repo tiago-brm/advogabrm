@@ -32,6 +32,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/contexts/TenantContext";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
+import { TenantSwitcher } from "@/components/TenantSwitcher";
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: Home },
@@ -72,9 +73,7 @@ export function AppSidebar() {
               src={tenantLogo}
               alt={tenant?.nome || "AdvogaBRM"}
               className="max-h-14 w-full object-contain object-left"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
             />
           ) : (
             <>
@@ -88,6 +87,8 @@ export function AppSidebar() {
             </>
           )}
         </div>
+        {/* Seletor de tenant — apenas SUPER_ADMIN */}
+        <TenantSwitcher />
       </SidebarHeader>
 
       <SidebarContent>

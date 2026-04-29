@@ -1,30 +1,35 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 export type Tenant = {
   id: string;
   nome: string;
-  logo_url: string | null;       // logo tema claro
-  logo_url_dark: string | null;  // logo tema escuro
+  logo_url: string | null;
+  logo_url_dark: string | null;
   primary_color_hex: string | null;
 };
 
 type TenantContextType = {
-  tenant: Tenant | null;
+  tenant: Tenant | null;           // tenant sendo exibido (pode ser preview)
+  realTenant: Tenant | null;       // tenant real do usuário logado
   role: "SUPER_ADMIN" | "MASTER" | "USER" | null;
   loading: boolean;
+  isPreviewMode: boolean;          // true quando SUPER_ADMIN está visualizando outro tenant
+  previewTenant: (t: Tenant | null) => void; // troca o tenant exibido
   refreshTenant: () => Promise<void>;
 };
 
 const TenantContext = createContext<TenantContextType>({
   tenant: null,
+  realTenant: null,
   role: null,
   loading: true,
+  isPreviewMode: false,
+  previewTenant: () => {},
   refreshTenant: async () => {},
 });
 
-// Helper to convert HEX to HSL string "H S% L%" for shadcn
 function hexToHslString(hex: string): string {
   let r = 0, g = 0, b = 0;
   if (hex.length === 4) {
@@ -37,41 +42,47 @@ function hexToHslString(hex: string): string {
     b = parseInt(hex.substring(5, 7), 16);
   }
   r /= 255; g /= 255; b /= 255;
-  let cmin = Math.min(r, g, b),
-    cmax = Math.max(r, g, b),
-    delta = cmax - cmin,
-    h = 0, s = 0, l = 0;
-
-  if (delta === 0) h = 0;
-  else if (cmax === r) h = ((g - b) / delta) % 6;
-  else if (cmax === g) h = (b - r) / delta + 2;
-  else h = (r - g) / delta + 4;
-
+  const cmin = Math.min(r, g, b), cmax = Math.max(r, g, b), delta = cmax - cmin;
+  let h = 0, s = 0, l = 0;
+  if (delta !== 0) {
+    if (cmax === r) h = ((g - b) / delta) % 6;
+    else if (cmax === g) h = (b - r) / delta + 2;
+    else h = (r - g) / delta + 4;
+  }
   h = Math.round(h * 60);
   if (h < 0) h += 360;
-
   l = (cmax + cmin) / 2;
   s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
-  s = +(s * 100).toFixed(1);
-  l = +(l * 100).toFixed(1);
+  return `${h} ${+(s * 100).toFixed(1)}% ${+(l * 100).toFixed(1)}%`;
+}
 
-  return `${h} ${s}% ${l}%`;
+function applyBranding(t: Tenant | null) {
+  if (t?.primary_color_hex) {
+    document.documentElement.style.setProperty("--primary", hexToHslString(t.primary_color_hex));
+  } else {
+    // Restaura a cor padrão
+    document.documentElement.style.removeProperty("--primary");
+  }
 }
 
 export function TenantProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [realTenant, setRealTenant] = useState<Tenant | null>(null);
+  const [overrideTenant, setOverrideTenant] = useState<Tenant | null>(null); // preview
   const [role, setRole] = useState<"SUPER_ADMIN" | "MASTER" | "USER" | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshTenant = async () => {
+  // Tenant efetivo = override (preview) ou o real
+  const tenant = overrideTenant ?? realTenant;
+  const isPreviewMode = overrideTenant !== null;
+
+  const refreshTenant = useCallback(async () => {
     if (!user) {
-      setTenant(null);
+      setRealTenant(null);
       setRole(null);
       setLoading(false);
       return;
     }
-
     try {
       const { data: profile } = await supabase
         .from("profiles")
@@ -87,31 +98,35 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
             .select("id, nome, logo_url, logo_url_dark, primary_color_hex")
             .eq("id", profile.tenant_id)
             .single();
-
           if (tenantData) {
-            setTenant(tenantData as Tenant);
-
-            // Apply Dynamic Branding
-            if (tenantData.primary_color_hex) {
-              const hsl = hexToHslString(tenantData.primary_color_hex);
-              document.documentElement.style.setProperty("--primary", hsl);
-            }
+            setRealTenant(tenantData as Tenant);
+            // Só aplica branding do real se não estiver em preview
+            if (!overrideTenant) applyBranding(tenantData as Tenant);
           }
         }
       }
     } catch (err) {
-      console.error("Error fetching tenant context", err);
+      console.error("TenantContext error:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, overrideTenant]);
 
   useEffect(() => {
     refreshTenant();
   }, [user]);
 
+  // Aplica branding toda vez que o tenant efetivo mudar
+  useEffect(() => {
+    applyBranding(tenant);
+  }, [tenant]);
+
+  const previewTenant = useCallback((t: Tenant | null) => {
+    setOverrideTenant(t);
+  }, []);
+
   return (
-    <TenantContext.Provider value={{ tenant, role, loading, refreshTenant }}>
+    <TenantContext.Provider value={{ tenant, realTenant, role, loading, isPreviewMode, previewTenant, refreshTenant }}>
       {children}
     </TenantContext.Provider>
   );
