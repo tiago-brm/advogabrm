@@ -144,7 +144,7 @@ async function processarAgendamentos() {
 }
 
 // Roda a cada 1 hora
-console.log("🚀 Advoga PRO Worker iniciado. Checando agendamentos de hora em hora...");
+console.log("🚀 AdvogaBRM Worker iniciado. Checando agendamentos de hora em hora...");
 cron.schedule("0 * * * *", processarAgendamentos);
 
 // Também roda imediatamente ao ligar o script para testarmos!

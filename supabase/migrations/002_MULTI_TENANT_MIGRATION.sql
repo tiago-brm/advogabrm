@@ -1,5 +1,5 @@
 -- ============================================================
--- ADVOGA PRO - Migração 2: Multi-Tenant Architecture
+-- AdvogaBRM - Migração 2: Multi-Tenant Architecture
 -- Execute este script no SQL Editor do Supabase
 -- ============================================================
 
@@ -28,7 +28,7 @@ DECLARE
 BEGIN
   -- Verificar se já existe um tenant para evitar erros
   IF NOT EXISTS (SELECT 1 FROM public.tenants LIMIT 1) THEN
-    INSERT INTO public.tenants (nome) VALUES ('Advoga PRO Default') RETURNING id INTO default_tenant_id;
+    INSERT INTO public.tenants (nome) VALUES ('AdvogaBRM Default') RETURNING id INTO default_tenant_id;
     
     -- Associar os perfis existentes ao tenant padrão e dar a eles o papel MASTER (ou SUPER_ADMIN)
     UPDATE public.profiles SET tenant_id = default_tenant_id, role = 'SUPER_ADMIN';
@@ -41,35 +41,43 @@ END $$;
 -- 4. Adicionar tenant_id em todas as tabelas de negócio
 -- Tabela Clientes
 ALTER TABLE public.clientes ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES public.tenants(id) ON DELETE CASCADE;
--- Atribuir os clientes atuais ao tenant de seu respectivo user_id
 UPDATE public.clientes SET tenant_id = (SELECT tenant_id FROM public.profiles WHERE profiles.id = clientes.user_id) WHERE tenant_id IS NULL;
 
 -- Tabela Processos
 ALTER TABLE public.processos ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES public.tenants(id) ON DELETE CASCADE;
 UPDATE public.processos SET tenant_id = (SELECT tenant_id FROM public.profiles WHERE profiles.id = processos.user_id) WHERE tenant_id IS NULL;
 
--- Tabela Honorarios
-ALTER TABLE public.honorarios ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES public.tenants(id) ON DELETE CASCADE;
-UPDATE public.honorarios SET tenant_id = (SELECT tenant_id FROM public.profiles WHERE profiles.id = honorarios.user_id) WHERE tenant_id IS NULL;
+-- Tabela Financeiro Lançamentos
+ALTER TABLE public.financeiro_lancamentos ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES public.tenants(id) ON DELETE CASCADE;
+UPDATE public.financeiro_lancamentos SET tenant_id = (SELECT tenant_id FROM public.profiles WHERE profiles.id = financeiro_lancamentos.user_id) WHERE tenant_id IS NULL;
 
--- Tabela Andamentos
-ALTER TABLE public.andamentos ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES public.tenants(id) ON DELETE CASCADE;
--- Andamentos não tem user_id diretamente, pegamos do processo
-UPDATE public.andamentos SET tenant_id = (SELECT tenant_id FROM public.processos WHERE processos.id = andamentos.processo_id) WHERE tenant_id IS NULL;
+-- Tabela Audiências
+ALTER TABLE public.audiencias ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES public.tenants(id) ON DELETE CASCADE;
+UPDATE public.audiencias SET tenant_id = (SELECT tenant_id FROM public.profiles WHERE profiles.id = audiencias.user_id) WHERE tenant_id IS NULL;
 
--- Tabela agendamentos_buscas
+-- Tabela Tarefas
+ALTER TABLE public.tarefas ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES public.tenants(id) ON DELETE CASCADE;
+UPDATE public.tarefas SET tenant_id = (SELECT tenant_id FROM public.profiles WHERE profiles.id = tarefas.user_id) WHERE tenant_id IS NULL;
+
+-- Tabela Documentos
+ALTER TABLE public.documentos ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES public.tenants(id) ON DELETE CASCADE;
+UPDATE public.documentos SET tenant_id = (SELECT tenant_id FROM public.profiles WHERE profiles.id = documentos.user_id) WHERE tenant_id IS NULL;
+
+-- Tabela agendamentos_buscas (criada na migration 001)
 ALTER TABLE public.agendamentos_buscas ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES public.tenants(id) ON DELETE CASCADE;
 UPDATE public.agendamentos_buscas SET tenant_id = (SELECT tenant_id FROM public.profiles WHERE profiles.id = agendamentos_buscas.user_id) WHERE tenant_id IS NULL;
 
--- Tabela user_smtp_configs
--- Como SMTP geralmente é por usuário e não por tenant (ou o tenant usa um geral), 
--- manteremos focado no usuário, mas também podemos atrelar ao tenant
+-- Tabela user_smtp_configs (criada na migration 001)
 ALTER TABLE public.user_smtp_configs ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES public.tenants(id) ON DELETE CASCADE;
 UPDATE public.user_smtp_configs SET tenant_id = (SELECT tenant_id FROM public.profiles WHERE profiles.id = user_smtp_configs.user_id) WHERE tenant_id IS NULL;
 
 -- Tabela message_templates
 ALTER TABLE public.message_templates ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES public.tenants(id) ON DELETE CASCADE;
 UPDATE public.message_templates SET tenant_id = (SELECT tenant_id FROM public.profiles WHERE profiles.id = message_templates.user_id) WHERE tenant_id IS NULL;
+
+-- Tabela Equipe
+ALTER TABLE public.equipe ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES public.tenants(id) ON DELETE CASCADE;
+UPDATE public.equipe SET tenant_id = (SELECT tenant_id FROM public.profiles WHERE profiles.id = equipe.user_id) WHERE tenant_id IS NULL;
 
 -- Criar a função auxiliar para checar o tenant atual para performance no RLS
 CREATE OR REPLACE FUNCTION public.get_auth_tenant_id() RETURNS UUID AS $$
@@ -118,7 +126,6 @@ CREATE POLICY "SUPER_ADMIN and MASTER can insert profiles" ON public.profiles
     (public.get_auth_role() = 'MASTER' AND tenant_id = public.get_auth_tenant_id())
   );
 
--- Helper script for dynamic policy creation (simpler to read, but we'll do it explicitly for safety)
 -- Clientes
 DROP POLICY IF EXISTS "Users can manage their own clients" ON public.clientes;
 DROP POLICY IF EXISTS "Tenant users can manage clients" ON public.clientes;
@@ -131,16 +138,34 @@ DROP POLICY IF EXISTS "Tenant users can manage processes" ON public.processos;
 CREATE POLICY "Tenant users can manage processes" ON public.processos
   FOR ALL USING (tenant_id = public.get_auth_tenant_id() OR public.get_auth_role() = 'SUPER_ADMIN');
 
--- Andamentos
-DROP POLICY IF EXISTS "Users can manage their own andamentos" ON public.andamentos;
-DROP POLICY IF EXISTS "Tenant users can manage andamentos" ON public.andamentos;
-CREATE POLICY "Tenant users can manage andamentos" ON public.andamentos
+-- Financeiro Lançamentos
+DROP POLICY IF EXISTS "Users can manage their own lancamentos" ON public.financeiro_lancamentos;
+DROP POLICY IF EXISTS "Tenant users can manage financeiro" ON public.financeiro_lancamentos;
+CREATE POLICY "Tenant users can manage financeiro" ON public.financeiro_lancamentos
   FOR ALL USING (tenant_id = public.get_auth_tenant_id() OR public.get_auth_role() = 'SUPER_ADMIN');
 
--- Honorarios
-DROP POLICY IF EXISTS "Users can manage their own honorarios" ON public.honorarios;
-DROP POLICY IF EXISTS "Tenant users can manage honorarios" ON public.honorarios;
-CREATE POLICY "Tenant users can manage honorarios" ON public.honorarios
+-- Audiências
+DROP POLICY IF EXISTS "Users can manage their own audiencias" ON public.audiencias;
+DROP POLICY IF EXISTS "Tenant users can manage audiencias" ON public.audiencias;
+CREATE POLICY "Tenant users can manage audiencias" ON public.audiencias
+  FOR ALL USING (tenant_id = public.get_auth_tenant_id() OR public.get_auth_role() = 'SUPER_ADMIN');
+
+-- Tarefas
+DROP POLICY IF EXISTS "Users can manage their own tarefas" ON public.tarefas;
+DROP POLICY IF EXISTS "Tenant users can manage tarefas" ON public.tarefas;
+CREATE POLICY "Tenant users can manage tarefas" ON public.tarefas
+  FOR ALL USING (tenant_id = public.get_auth_tenant_id() OR public.get_auth_role() = 'SUPER_ADMIN');
+
+-- Documentos
+DROP POLICY IF EXISTS "Users can manage their own documentos" ON public.documentos;
+DROP POLICY IF EXISTS "Tenant users can manage documentos" ON public.documentos;
+CREATE POLICY "Tenant users can manage documentos" ON public.documentos
+  FOR ALL USING (tenant_id = public.get_auth_tenant_id() OR public.get_auth_role() = 'SUPER_ADMIN');
+
+-- Equipe
+DROP POLICY IF EXISTS "Users can manage their own equipe" ON public.equipe;
+DROP POLICY IF EXISTS "Tenant users can manage equipe" ON public.equipe;
+CREATE POLICY "Tenant users can manage equipe" ON public.equipe
   FOR ALL USING (tenant_id = public.get_auth_tenant_id() OR public.get_auth_role() = 'SUPER_ADMIN');
 
 -- Agendamentos Buscas

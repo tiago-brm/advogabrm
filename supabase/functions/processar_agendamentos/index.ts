@@ -107,13 +107,13 @@ serve(async (req) => {
             }).join("");
 
             const html = `
-              <h2>Relatório Automático de Processos - Advoga PRO</h2>
+              <h2>Relatório Automático de Processos - AdvogaBRM</h2>
               <p>Olá, sua busca programada no tribunal <strong>${ag.tribunal.toUpperCase()}</strong> foi executada.</p>
               <p>Filtros: Assunto = ${ag.assunto || "Qualquer"}, Período = ${ag.data_ajuizamento_inicio || "*"} a ${ag.data_ajuizamento_fim || "*"}</p>
               <p><strong>Total Encontrado:</strong> ${total}</p>
               <ul>${htmlResultados || "<li>Nenhum processo novo encontrado.</li>"}</ul>
               <br/>
-              <p>Acesse o sistema Advoga PRO para ver todos os detalhes.</p>
+              <p>Acesse o sistema AdvogaBRM para ver todos os detalhes.</p>
             `;
 
             await transporter.sendMail({

@@ -30,6 +30,7 @@ import {
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/contexts/TenantContext";
+import { useLogo } from "@/hooks/useLogo";
 import { Button } from "@/components/ui/button";
 const menuItems = [
   {
@@ -99,6 +100,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { signOut, user } = useAuth();
   const { tenant } = useTenant();
+  const logoSrc = useLogo(tenant?.logo_url);
 
   const handleSignOut = async () => {
     await signOut();
@@ -107,8 +109,17 @@ export function AppSidebar() {
     <Sidebar className="border-r border-border/50">
       <SidebarHeader className="p-6">
         <div className="flex items-center gap-3">
-          {tenant?.logo_url ? (
-            <img src={tenant.logo_url} alt="Logo" className="max-h-12 w-auto object-contain" />
+          {logoSrc ? (
+            <img 
+              src={logoSrc} 
+              alt={tenant?.nome || "AdvogaBRM"} 
+              className="max-h-12 w-auto object-contain"
+              onError={(e) => {
+                // Se a imagem não carregar (ex: logo ainda não colocada na pasta),
+                // esconde e mostra o fallback com ícone
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
           ) : (
             <>
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
