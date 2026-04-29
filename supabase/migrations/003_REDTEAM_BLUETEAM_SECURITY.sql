@@ -35,12 +35,15 @@ CREATE TRIGGER enforce_default_role_on_insert
 CREATE OR REPLACE FUNCTION public.prevent_role_self_escalation()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Se o usuário está atualizando seu próprio perfil E tentou mudar o role
+  -- Ninguém pode rebaixar o próprio role
   IF NEW.id = auth.uid() AND OLD.role != NEW.role THEN
     RAISE EXCEPTION 'Você não tem permissão para alterar seu próprio role.';
   END IF;
-  -- Também não pode mudar seu próprio tenant_id
-  IF NEW.id = auth.uid() AND OLD.tenant_id IS DISTINCT FROM NEW.tenant_id THEN
+  -- Usuários comuns não podem trocar o próprio tenant_id
+  -- SUPER_ADMIN pode (necessário para o tenant switcher de impersonação)
+  IF NEW.id = auth.uid() 
+     AND OLD.tenant_id IS DISTINCT FROM NEW.tenant_id
+     AND OLD.role != 'SUPER_ADMIN' THEN
     RAISE EXCEPTION 'Você não tem permissão para alterar seu próprio tenant.';
   END IF;
   RETURN NEW;
