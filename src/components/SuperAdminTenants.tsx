@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, Building, Plus, UserPlus } from "lucide-react";
+import { Loader2, Building, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTenant } from "@/contexts/TenantContext";
@@ -15,16 +14,25 @@ export function SuperAdminTenants() {
   const [creating, setCreating] = useState(false);
   const [novoNome, setNovoNome] = useState("");
 
-  if (role !== "SUPER_ADMIN") return null;
-
+  // ✅ Hooks sempre antes de qualquer return condicional
   useEffect(() => {
-    fetchTenants();
-  }, []);
+    if (role === "SUPER_ADMIN") {
+      fetchTenants();
+    } else {
+      setLoading(false);
+    }
+  }, [role]);
+
+  // Guarda de renderização DEPOIS dos hooks
+  if (role !== "SUPER_ADMIN") return null;
 
   async function fetchTenants() {
     setLoading(true);
     try {
-      const { data, error } = await supabase.from("tenants").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("tenants")
+        .select("*")
+        .order("created_at", { ascending: false });
       if (error) throw error;
       setTenants(data || []);
     } catch (err) {
@@ -64,12 +72,12 @@ export function SuperAdminTenants() {
         </CardDescription>
       </CardHeader>
       <CardContent className="p-4 sm:p-6 space-y-4">
-        
         <div className="flex gap-2">
-          <Input 
-            placeholder="Nome do Novo Escritório" 
-            value={novoNome} 
+          <Input
+            placeholder="Nome do Novo Escritório"
+            value={novoNome}
             onChange={e => setNovoNome(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleCreate()}
           />
           <Button onClick={handleCreate} disabled={creating || !novoNome.trim()}>
             {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
@@ -80,22 +88,27 @@ export function SuperAdminTenants() {
         <div className="space-y-3 mt-4">
           {loading ? (
             <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
+          ) : tenants.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhum escritório encontrado.</p>
           ) : (
             tenants.map(t => (
               <div key={t.id} className="p-4 border rounded-lg flex justify-between items-center">
                 <div>
                   <h3 className="font-bold">{t.nome}</h3>
-                  <p className="text-xs text-muted-foreground">ID: {t.id}</p>
+                  <p className="text-xs text-muted-foreground font-mono">ID: {t.id}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   {t.logo_url && <img src={t.logo_url} className="h-8 object-contain" alt="Logo" />}
-                  <div className="w-6 h-6 rounded-full border" style={{ backgroundColor: t.primary_color_hex }}></div>
+                  <div
+                    className="w-6 h-6 rounded-full border-2 border-border"
+                    style={{ backgroundColor: t.primary_color_hex || "#2563eb" }}
+                    title={t.primary_color_hex}
+                  />
                 </div>
               </div>
             ))
           )}
         </div>
-
       </CardContent>
     </Card>
   );
