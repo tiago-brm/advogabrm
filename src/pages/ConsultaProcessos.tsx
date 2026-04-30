@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Search, FileText, AlertCircle, User, Hash, CreditCard, ChevronDown, ChevronUp, Calendar, Building2, Scale } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { RpaEnrichmentPanel } from "@/components/RpaEnrichmentPanel";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -265,7 +266,7 @@ function grauBadgeColor(grau?: string) {
 
 // ─── Card de resultado ────────────────────────────────────────────────────────
 
-function ProcessoCard({ p }: { p: ProcessoResult }) {
+function ProcessoCard({ p, tribunalAlias }: { p: ProcessoResult; tribunalAlias: string }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -358,6 +359,9 @@ function ProcessoCard({ p }: { p: ProcessoResult }) {
         >
           {expanded ? <><ChevronUp className="h-3 w-3 mr-1" /> Menos detalhes</> : <><ChevronDown className="h-3 w-3 mr-1" /> Ver movimentos e mais</>}
         </Button>
+
+        {/* Enriquecimento RPA + Cadastro */}
+        <RpaEnrichmentPanel processo={p} tribunalAlias={tribunalAlias} />
       </CardContent>
     </Card>
   );
@@ -627,7 +631,7 @@ export default function ConsultaProcessos() {
           </div>
           <div className="space-y-4">
             {resultados.map((p, i) => (
-              <ProcessoCard key={p.numeroProcesso ?? i} p={p} />
+              <ProcessoCard key={p.numeroProcesso ?? i} p={p} tribunalAlias={tribunal} />
             ))}
           </div>
 

@@ -14,6 +14,9 @@ import {
   CalendarDays,
   UserCheck,
   Search,
+  Workflow,
+  ListTodo,
+  Edit3
 } from "lucide-react";
 import {
   Sidebar,
@@ -52,10 +55,16 @@ const secondaryItems = [
   { title: "Mensagens", url: "/mensagens", icon: MessageSquare },
 ];
 
+const legalopsItems = [
+  { title: "Catálogo", url: "/bpmn/catalogo", icon: Workflow },
+  { title: "Minhas Tarefas", url: "/bpmn/tarefas", icon: ListTodo },
+  { title: "Modelador BPMN", url: "/admin/bpmn-modeler", icon: Edit3, role: "SUPER_ADMIN" },
+];
+
 export function AppSidebar() {
   const location = useLocation();
   const { signOut, user } = useAuth();
-  const { tenant } = useTenant();
+  const { tenant, role } = useTenant();
   const { resolvedTheme } = useTheme();
 
   // Seleciona a logo correta por tema
@@ -134,6 +143,31 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-muted-foreground uppercase tracking-wider text-xs">
+            Legal Ops (BPMN)
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {legalopsItems.map((item) => {
+                if (item.role && role !== item.role) return null;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      className={location.pathname === item.url ? "bg-primary/10 text-primary" : ""}
+                    >
+                      <Link to={item.url} className="flex items-center gap-3">
+                        <item.icon className="w-4 h-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

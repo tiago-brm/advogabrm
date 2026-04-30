@@ -28,6 +28,13 @@ import Agenda from "./pages/Agenda";
 import Equipe from "./pages/Equipe";
 import ConsultaProcessos from "./pages/ConsultaProcessos";
 
+// LegalOps BPMN Pages
+import BpmnModelerPage from "./pages/bpmn/ModelerPage";
+import CatalogPage from "./pages/bpmn/CatalogPage";
+import ProcessStartPage from "./pages/bpmn/ProcessStartPage";
+import TasksInboxPage from "./pages/bpmn/TasksInboxPage";
+import TaskFormPage from "./pages/bpmn/TaskFormPage";
+
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -66,6 +73,13 @@ const App = () => {
                             <Route path="/relatorios" element={<Relatorios />} />
                             <Route path="/mensagens" element={<Mensagens />} />
                             <Route path="/configuracoes" element={<Configuracoes />} />
+                            
+                            {/* Rotas LegalOps BPMN */}
+                            <Route path="/admin/bpmn-modeler" element={<BpmnModelerPage />} />
+                            <Route path="/bpmn/catalogo" element={<CatalogPage />} />
+                            <Route path="/bpmn/processos/novo/:templateId" element={<ProcessStartPage />} />
+                            <Route path="/bpmn/tarefas" element={<TasksInboxPage />} />
+                            <Route path="/bpmn/tarefas/:taskId" element={<TaskFormPage />} />
                             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                             <Route path="*" element={<NotFound />} />
                           </Routes>
