@@ -1,8 +1,21 @@
 // ─── Tipos da API RPA ─────────────────────────────────────────────────────────
 
-const RPA_API_BASE = "https://khol-rpa.ymlwkl.easypanel.host";
+// Usa o proxy do Vite para evitar CORS (/rpa-api → https://khol-rpa.ymlwkl.easypanel.host)
+const RPA_API_BASE = "/rpa-api";
 
 export const RPA_TRIBUNAIS_SUPORTADOS = ["tjms", "tjsp"];
+
+// ─── Formatter CNJ ────────────────────────────────────────────────────────────
+// A API RPA espera o número no formato com pontuação: NNNNNNN-DD.AAAA.J.TT.OOOO
+// O DataJud retorna em formato raw de 20 dígitos (ex: 00008323520184013202)
+export function formatarNumeroCNJ(numero: string): string {
+  const s = numero.replace(/\D/g, "");
+  if (s.length === 20) {
+    // 7-2.4.1.2.4
+    return `${s.slice(0,7)}-${s.slice(7,9)}.${s.slice(9,13)}.${s.slice(13,14)}.${s.slice(14,16)}.${s.slice(16,20)}`;
+  }
+  return numero; // já está formatado ou formato desconhecido
+}
 
 export interface ResultadoRPA {
   numero_processo: string;
@@ -41,10 +54,14 @@ export async function dispararConsultaRPA(
   tribunal: "tjms" | "tjsp",
   processos: string[]
 ): Promise<ConsultaJobResponse> {
+  // Garante formato CNJ com pontuação (NNNNNNN-DD.AAAA.J.TT.OOOO)
+  const processosFormatados = processos.map(formatarNumeroCNJ);
+  console.log("[RPA] Disparando consulta:", { tribunal, processos: processosFormatados });
+
   const res = await fetch(`${RPA_API_BASE}/api/consulta`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ tribunal, processos }),
+    body: JSON.stringify({ tribunal, processos: processosFormatados }),
   });
   if (!res.ok) {
     const err = await res.text();

@@ -34,6 +34,7 @@ import CatalogPage from "./pages/bpmn/CatalogPage";
 import ProcessStartPage from "./pages/bpmn/ProcessStartPage";
 import TasksInboxPage from "./pages/bpmn/TasksInboxPage";
 import TaskFormPage from "./pages/bpmn/TaskFormPage";
+import MonitoramentoPage from "./pages/MonitoramentoPage";
 
 const queryClient = new QueryClient();
 
@@ -80,6 +81,7 @@ const App = () => {
                             <Route path="/bpmn/processos/novo/:templateId" element={<ProcessStartPage />} />
                             <Route path="/bpmn/tarefas" element={<TasksInboxPage />} />
                             <Route path="/bpmn/tarefas/:taskId" element={<TaskFormPage />} />
+                            <Route path="/monitoramento" element={<MonitoramentoPage />} />
                             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                             <Route path="*" element={<NotFound />} />
                           </Routes>

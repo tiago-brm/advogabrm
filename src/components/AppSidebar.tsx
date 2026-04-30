@@ -16,7 +16,8 @@ import {
   Search,
   Workflow,
   ListTodo,
-  Edit3
+  Edit3,
+  Eye
 } from "lucide-react";
 import {
   Sidebar,
@@ -42,6 +43,7 @@ const menuItems = [
   { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Processos", url: "/processos", icon: Briefcase },
   { title: "Consulta Datajud", url: "/consulta-processos", icon: Search },
+  { title: "Monitoramento", url: "/monitoramento", icon: Eye },
   { title: "Audiências", url: "/audiencias", icon: Calendar },
   { title: "Tarefas", url: "/tarefas", icon: Clock },
   { title: "Documentos", url: "/documentos", icon: FileText },

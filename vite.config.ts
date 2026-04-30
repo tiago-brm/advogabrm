@@ -16,6 +16,13 @@ export default defineConfig(({ mode }) => ({
         secure: true,
         rewrite: (path) => path.replace(/^\/datajud-api/, ""),
       },
+      // Proxy para resolver CORS com a API RPA (TJMS/TJSP)
+      "/rpa-api": {
+        target: "https://khol-rpa.ymlwkl.easypanel.host",
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/rpa-api/, ""),
+      },
     },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(

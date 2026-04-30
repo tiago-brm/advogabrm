@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Bot, Loader2, CheckCircle2, AlertTriangle, Zap,
   User, Building2, Scale, DollarSign, Gavel, TrendingUp,
-  FilePlus, ChevronDown, ChevronUp
+  FilePlus, ChevronDown, ChevronUp, Eye
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -17,12 +17,16 @@ import {
   RPA_TRIBUNAIS_SUPORTADOS,
 } from "@/services/rpaService";
 import { CadastrarProcessoModal } from "@/components/CadastrarProcessoModal";
+import { MonitorarProcessoModal } from "@/components/MonitorarProcessoModal";
 
 interface ProcessoDataJud {
   numeroProcesso: string;
+  classe?: { codigo: number; nome: string } | string;
+  tribunal?: string;
   assuntos?: Array<{ nome: string }>;
   dataAjuizamento?: string;
   orgaoJulgador?: { nome: string };
+  partes?: Array<{ nome: string; tipo: string }>;
 }
 
 interface Props {
@@ -40,6 +44,7 @@ type EnriquecimentoState =
 export function RpaEnrichmentPanel({ processo, tribunalAlias }: Props) {
   const [estado, setEstado] = useState<EnriquecimentoState>({ fase: "idle" });
   const [modalCadastro, setModalCadastro] = useState(false);
+  const [modalMonitorar, setModalMonitorar] = useState(false);
   const [expandidoMovs, setExpandidoMovs] = useState(false);
   const abortRef = useRef(false);
 
@@ -67,9 +72,14 @@ export function RpaEnrichmentPanel({ processo, tribunalAlias }: Props) {
 
       if (resultado.resultados.length > 0) {
         const r = resultado.resultados[0];
+        // Normaliza erros internos do backend Python para mensagem amigável
+        const erroInterno = r.mensagem_erro?.includes("_UCWrapper") || r.mensagem_erro?.includes("unexpected keyword");
         if (r.status === "sucesso") {
           setEstado({ fase: "concluido", resultado: r });
           toast.success("✅ Enriquecimento concluído!");
+        } else if (erroInterno) {
+          setEstado({ fase: "erro", mensagem: "O RPA ainda não tem suporte para este formato de número de processo. Tente cadastrar manualmente." });
+          toast.warning("⚠️ RPA: processo incompatível com esta versão do bot.");
         } else {
           setEstado({ fase: "erro", mensagem: r.mensagem_erro || "RPA não encontrou o processo." });
           toast.warning(`⚠️ RPA retornou: ${r.mensagem_erro || "sem resultado"}`);
@@ -85,26 +95,55 @@ export function RpaEnrichmentPanel({ processo, tribunalAlias }: Props) {
 
   if (!isCompativel) {
     return (
-      <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground border rounded p-2 bg-muted/30">
-        <Bot className="w-3.5 h-3.5 shrink-0" />
-        <span>Enriquecimento via RPA disponível apenas para TJMS e TJSP.</span>
+      <div className="mt-3 space-y-2">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground border rounded p-2 bg-muted/30">
+          <Bot className="w-3.5 h-3.5 shrink-0" />
+          <span>Enriquecimento via RPA disponível apenas para TJMS e TJSP.</span>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setModalMonitorar(true)} className="flex-1 border-amber-400 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20">
+            <Eye className="w-3.5 h-3.5 mr-1.5" /> Monitorar
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setModalCadastro(true)} className="flex-1">
+            <FilePlus className="w-3.5 h-3.5 mr-1.5" /> Cadastrar
+          </Button>
+        </div>
+        {modalMonitorar && (
+          <MonitorarProcessoModal open={modalMonitorar} onClose={() => setModalMonitorar(false)}
+            tribunalAlias={tribunalAlias} processoDataJud={processo} processoRPA={null} />
+        )}
+        {modalCadastro && (
+          <CadastrarProcessoModal open={modalCadastro} onClose={() => setModalCadastro(false)}
+            processoDataJud={processo} processoRPA={null} />
+        )}
       </div>
     );
   }
 
   return (
     <div className="mt-3 space-y-3">
-      {/* Botão de acionamento */}
+      {/* Botões de acionamento idle */}
       {estado.fase === "idle" && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleEnriquecer}
-          className="w-full border-violet-500/40 text-violet-700 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30"
-        >
-          <Zap className="w-3.5 h-3.5 mr-2" />
-          Enriquecer com RPA ({tribunalAlias.toUpperCase()})
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleEnriquecer}
+            className="flex-1 border-violet-500/40 text-violet-700 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30"
+          >
+            <Zap className="w-3.5 h-3.5 mr-2" />
+            Enriquecer ({tribunalAlias.toUpperCase()})
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setModalMonitorar(true)}
+            className="border-amber-400 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+            title="Monitorar sem cadastrar cliente agora"
+          >
+            <Eye className="w-3.5 h-3.5" />
+          </Button>
+        </div>
       )}
 
       {/* Disparando */}
@@ -245,12 +284,19 @@ export function RpaEnrichmentPanel({ processo, tribunalAlias }: Props) {
               </>
             )}
 
-            {/* Banner de cadastro */}
+            {/* Banner de ações pós-enriquecimento */}
             <Separator />
-            <div className="flex items-center justify-between gap-3 pt-1">
-              <p className="text-xs text-muted-foreground">
-                Deseja cadastrar este processo com os dados enriquecidos?
-              </p>
+            <div className="flex items-center gap-2 pt-1">
+              <p className="text-xs text-muted-foreground flex-1">O que deseja fazer?</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setModalMonitorar(true)}
+                className="border-amber-400 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+              >
+                <Eye className="w-3.5 h-3.5 mr-1.5" />
+                Monitorar
+              </Button>
               <Button
                 size="sm"
                 onClick={() => setModalCadastro(true)}
@@ -264,23 +310,33 @@ export function RpaEnrichmentPanel({ processo, tribunalAlias }: Props) {
         </Card>
       )}
 
-      {/* Botão de cadastrar mesmo sem RPA (idle) */}
-      {estado.fase === "idle" && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setModalCadastro(true)}
-          className="w-full text-muted-foreground text-xs"
-        >
-          <FilePlus className="w-3.5 h-3.5 mr-1.5" />
-          Cadastrar sem enriquecimento
-        </Button>
+      {/* Botão de ações no estado idle sem enriquecimento */}
+      {estado.fase === "idle" && null /* botões já acima */}
+
+      {/* Estado erro: manter opções */}
+      {estado.fase === "erro" && (
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setModalMonitorar(true)}
+            className="flex-1 border-amber-400 text-amber-600 hover:bg-amber-50">
+            <Eye className="w-3.5 h-3.5 mr-1.5" /> Monitorar mesmo assim
+          </Button>
+        </div>
       )}
 
       {modalCadastro && (
         <CadastrarProcessoModal
           open={modalCadastro}
           onClose={() => setModalCadastro(false)}
+          processoDataJud={processo}
+          processoRPA={estado.fase === "concluido" ? estado.resultado : null}
+        />
+      )}
+
+      {modalMonitorar && (
+        <MonitorarProcessoModal
+          open={modalMonitorar}
+          onClose={() => setModalMonitorar(false)}
+          tribunalAlias={tribunalAlias}
           processoDataJud={processo}
           processoRPA={estado.fase === "concluido" ? estado.resultado : null}
         />
