@@ -29,8 +29,16 @@ export type Task = {
   name: string;
   assignee_id: string | null;
   form_schema: any | null;
-  status: 'PENDING' | 'COMPLETED';
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
   created_at: string;
   completed_at: string | null;
   process_instance?: ProcessInstance; // related data
+};
+
+export type RpaTask = Task & {
+  task_type: 'HUMAN' | 'RPA' | 'API';
+  rpa_queue: string | null;
+  rpa_payload: Record<string, unknown> | null;
+  rpa_result: Record<string, unknown> | null;
+  error_message: string | null;
 };

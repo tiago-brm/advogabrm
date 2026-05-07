@@ -24,9 +24,11 @@ import {
   User,
   Download,
   HardDrive,
+  Sparkles,
 } from "lucide-react";
 import { DocumentoForm } from "@/components/documentos/DocumentoForm";
 import { DeleteDocumentoDialog } from "@/components/documentos/DeleteDocumentoDialog";
+import { ResumoPdfDialog } from "@/components/documentos/ResumoPdfDialog";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -61,9 +63,9 @@ export default function Documentos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [documentoToDelete, setDocumentoToDelete] = useState<Documento | null>(
-    null
-  );
+  const [documentoToDelete, setDocumentoToDelete] = useState<Documento | null>(null);
+  const [documentoParaResumir, setDocumentoParaResumir] = useState<Documento | null>(null);
+  const [isResumoPdfOpen, setIsResumoPdfOpen] = useState(false);
   const [clientes, setClientes] = useState<{ id: string; nome: string }[]>([]);
 
   const { user } = useAuth();
@@ -281,6 +283,14 @@ export default function Documentos() {
                               <Download className="mr-2 h-4 w-4" />
                               Baixar
                             </DropdownMenuItem>
+                            {doc.name.toLowerCase().endsWith(".pdf") && (
+                              <DropdownMenuItem
+                                onClick={() => { setDocumentoParaResumir(doc); setIsResumoPdfOpen(true); }}
+                              >
+                                <Sparkles className="mr-2 h-4 w-4 text-primary" />
+                                Resumir com IA
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem
                               onClick={() => handleDelete(doc)}
                               className="text-destructive focus:text-destructive focus:bg-destructive/10"
@@ -383,6 +393,12 @@ export default function Documentos() {
           onConfirm={confirmDelete}
         />
       )}
+
+      <ResumoPdfDialog
+        documento={documentoParaResumir}
+        open={isResumoPdfOpen}
+        onClose={() => { setIsResumoPdfOpen(false); setDocumentoParaResumir(null); }}
+      />
     </div>
   );
 }

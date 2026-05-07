@@ -34,9 +34,24 @@ import CatalogPage from "./pages/bpmn/CatalogPage";
 import ProcessStartPage from "./pages/bpmn/ProcessStartPage";
 import TasksInboxPage from "./pages/bpmn/TasksInboxPage";
 import TaskFormPage from "./pages/bpmn/TaskFormPage";
+import RpaQueueMonitorPage from "./pages/bpmn/RpaQueueMonitorPage";
+import WorkflowEditorPage from "./pages/workflow/WorkflowEditorPage";
 import MonitoramentoPage from "./pages/MonitoramentoPage";
+import { EnriquecimentoFloatingWidget } from "@/components/EnriquecimentoFloatingWidget";
+import { useEnriquecimentoPoller } from "@/hooks/useEnriquecimentoPoller";
 
 const queryClient = new QueryClient();
+
+// Montado dentro do BrowserRouter para ter acesso ao useNavigate/useLocation
+function AppLayout({ children }: { children: React.ReactNode }) {
+  useEnriquecimentoPoller();
+  return (
+    <>
+      {children}
+      <EnriquecimentoFloatingWidget />
+    </>
+  );
+}
 
 const App = () => {
   return (
@@ -52,6 +67,7 @@ const App = () => {
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/*" element={
                   <ProtectedRoute>
+                    <AppLayout>
                     <SidebarProvider>
                       <div className="min-h-screen flex w-full">
                         <AppSidebar />
@@ -81,6 +97,8 @@ const App = () => {
                             <Route path="/bpmn/processos/novo/:templateId" element={<ProcessStartPage />} />
                             <Route path="/bpmn/tarefas" element={<TasksInboxPage />} />
                             <Route path="/bpmn/tarefas/:taskId" element={<TaskFormPage />} />
+                            <Route path="/bpmn/rpa-monitor" element={<RpaQueueMonitorPage />} />
+                            <Route path="/admin/workflow-editor" element={<WorkflowEditorPage />} />
                             <Route path="/monitoramento" element={<MonitoramentoPage />} />
                             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                             <Route path="*" element={<NotFound />} />
@@ -88,6 +106,7 @@ const App = () => {
                         </main>
                       </div>
                     </SidebarProvider>
+                    </AppLayout>
                   </ProtectedRoute>
                 } />
               </Routes>

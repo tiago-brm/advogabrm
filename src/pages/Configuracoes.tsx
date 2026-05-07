@@ -23,6 +23,7 @@ import { PlusCircle, Trash2, Key, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { SmtpConfig } from "@/components/SmtpConfig";
+import { LlmConfig } from "@/components/LlmConfig";
 import { TenantConfig } from "@/components/TenantConfig";
 import { SuperAdminTenants } from "@/components/SuperAdminTenants";
 
@@ -330,6 +331,9 @@ const Configuracoes: React.FC = () => {
 
       {/* Seção de SMTP */}
       <SmtpConfig />
+
+      {/* Seção de Inteligência Artificial */}
+      <LlmConfig />
 
       <Card>
         <CardHeader className="p-4 sm:p-6">

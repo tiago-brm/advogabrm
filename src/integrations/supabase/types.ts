@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      rpa_enriquecimento_cache: {
+        Row: {
+          id: string
+          tenant_id: string
+          numero_processo: string
+          tribunal: string
+          resultado: Json
+          cached_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id?: string
+          numero_processo: string
+          tribunal: string
+          resultado: Json
+          cached_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          numero_processo?: string
+          tribunal?: string
+          resultado?: Json
+          cached_at?: string
+        }
+        Relationships: []
+      }
       audiencias: {
         Row: {
           created_at: string
@@ -396,6 +423,200 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      templates: {
+        Row: {
+          id: string
+          tenant_id: string | null
+          name: string
+          bpmn_xml: string
+          form_schema: Json | null
+          version: number
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id?: string | null
+          name: string
+          bpmn_xml: string
+          form_schema?: Json | null
+          version?: number
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string | null
+          name?: string
+          bpmn_xml?: string
+          form_schema?: Json | null
+          version?: number
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      process_instances: {
+        Row: {
+          id: string
+          template_id: string | null
+          tenant_id: string
+          external_id: string | null
+          status: "ACTIVE" | "COMPLETED" | "SUSPENDED" | "TERMINATED"
+          started_by: string | null
+          started_at: string
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          template_id?: string | null
+          tenant_id: string
+          external_id?: string | null
+          status?: "ACTIVE" | "COMPLETED" | "SUSPENDED" | "TERMINATED"
+          started_by?: string | null
+          started_at?: string
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          template_id?: string | null
+          tenant_id?: string
+          external_id?: string | null
+          status?: "ACTIVE" | "COMPLETED" | "SUSPENDED" | "TERMINATED"
+          started_by?: string | null
+          started_at?: string
+          completed_at?: string | null
+        }
+        Relationships: []
+      }
+      checklist_templates: {
+        Row: {
+          id: string
+          user_id: string | null
+          area: string
+          nome: string
+          tarefas: Json
+          is_global: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          area: string
+          nome: string
+          tarefas?: Json
+          is_global?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          area?: string
+          nome?: string
+          tarefas?: Json
+          is_global?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      user_llm_configs: {
+        Row: {
+          id: string
+          user_id: string
+          provider: "openai" | "anthropic" | "google" | "openrouter"
+          api_key: string
+          model: string
+          base_url: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          provider: "openai" | "anthropic" | "google" | "openrouter"
+          api_key: string
+          model: string
+          base_url?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          provider?: "openai" | "anthropic" | "google" | "openrouter"
+          api_key?: string
+          model?: string
+          base_url?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_llm_configs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          id: string
+          process_instance_id: string | null
+          tenant_id: string
+          external_task_id: string | null
+          name: string
+          assignee_id: string | null
+          form_schema: Json | null
+          status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "FAILED"
+          task_type: "HUMAN" | "RPA" | "API"
+          rpa_queue: string | null
+          rpa_payload: Json | null
+          rpa_result: Json | null
+          error_message: string | null
+          created_at: string
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          process_instance_id?: string | null
+          tenant_id: string
+          external_task_id?: string | null
+          name: string
+          assignee_id?: string | null
+          form_schema?: Json | null
+          status?: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "FAILED"
+          task_type?: "HUMAN" | "RPA" | "API"
+          rpa_queue?: string | null
+          rpa_payload?: Json | null
+          rpa_result?: Json | null
+          error_message?: string | null
+          created_at?: string
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          process_instance_id?: string | null
+          tenant_id?: string
+          external_task_id?: string | null
+          name?: string
+          assignee_id?: string | null
+          form_schema?: Json | null
+          status?: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "FAILED"
+          task_type?: "HUMAN" | "RPA" | "API"
+          rpa_queue?: string | null
+          rpa_payload?: Json | null
+          rpa_result?: Json | null
+          error_message?: string | null
+          created_at?: string
+          completed_at?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {

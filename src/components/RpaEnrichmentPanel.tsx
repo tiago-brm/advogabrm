@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import {
   aguardarResultadoRPA,
   RPA_TRIBUNAIS_SUPORTADOS,
 } from "@/services/rpaService";
+import { getCachedResultado, setCachedResultado } from "@/services/rpaCache";
 import { CadastrarProcessoModal } from "@/components/CadastrarProcessoModal";
 import { MonitorarProcessoModal } from "@/components/MonitorarProcessoModal";
 
@@ -32,17 +33,35 @@ interface ProcessoDataJud {
 interface Props {
   processo: ProcessoDataJud;
   tribunalAlias: string; // alias DataJud (ex: "tjms")
+  resultadoBulk?: ResultadoRPA; // resultado já disponível via enriquecimento em massa
 }
 
 type EnriquecimentoState =
   | { fase: "idle" }
   | { fase: "disparando" }
   | { fase: "aguardando"; job: ConsultaJobResponse }
-  | { fase: "concluido"; resultado: ResultadoRPA }
+  | { fase: "concluido"; resultado: ResultadoRPA; diasCache?: number }
   | { fase: "erro"; mensagem: string };
 
-export function RpaEnrichmentPanel({ processo, tribunalAlias }: Props) {
-  const [estado, setEstado] = useState<EnriquecimentoState>({ fase: "idle" });
+export function RpaEnrichmentPanel({ processo, tribunalAlias, resultadoBulk }: Props) {
+  const [estado, setEstado] = useState<EnriquecimentoState>(
+    resultadoBulk ? { fase: "concluido", resultado: resultadoBulk } : { fase: "idle" }
+  );
+
+  // Verifica cache Supabase ao montar o card
+  useEffect(() => {
+    if (estado.fase !== "idle") return;
+    getCachedResultado(processo.numeroProcesso).then((entry) => {
+      if (entry) setEstado({ fase: "concluido", resultado: entry.resultado, diasCache: entry.diasAtras });
+    });
+  }, [processo.numeroProcesso]);
+
+  // Quando o bulk entregar um resultado para este card, atualiza o estado
+  useEffect(() => {
+    if (resultadoBulk) {
+      setEstado({ fase: "concluido", resultado: resultadoBulk });
+    }
+  }, [resultadoBulk]);
   const [modalCadastro, setModalCadastro] = useState(false);
   const [modalMonitorar, setModalMonitorar] = useState(false);
   const [expandidoMovs, setExpandidoMovs] = useState(false);
@@ -57,35 +76,48 @@ export function RpaEnrichmentPanel({ processo, tribunalAlias }: Props) {
 
     try {
       toast.info("🤖 Acionando RPA para consulta enriquecida...");
-      const job = await dispararConsultaRPA(
-        tribunalAlias as "tjms" | "tjsp",
-        [processo.numeroProcesso]
-      );
+      const job = await dispararConsultaRPA(tribunalAlias, [processo.numeroProcesso]);
       setEstado({ fase: "aguardando", job });
 
+      // onResult dispara imediatamente para cada resultado que chegar durante o polling
+      let resultadoEntregue = false;
       const resultado = await aguardarResultadoRPA(
         job.job_id,
         (progresso) => {
-          setEstado({ fase: "aguardando", job: progresso });
+          // Só atualiza o progresso se ainda não temos resultado — evita sobrescrever
+          setEstado((prev) => prev.fase === "concluido" ? prev : { fase: "aguardando", job: progresso });
+        },
+        (r) => {
+          resultadoEntregue = true;
+          // "sucesso" = dados completos; "Em andamento" = processo existe, sem sentença (válido)
+          const isSuccess = r.status === "sucesso" || r.status === "Em andamento";
+          const temDados = !!(r.valor_causa_raw || r.movimentacoes?.length > 0 || r.partes?.length > 0 || r.vara || r.juiz);
+          if (isSuccess || temDados) {
+            setEstado({ fase: "concluido", resultado: r });
+            setCachedResultado(r.numero_processo, tribunalAlias, r);
+            toast.success(r.status === "Em andamento" ? "✅ Processo em andamento — dados coletados" : "✅ Enriquecimento concluído!");
+          } else if (r.status === "erro_tecnico") {
+            setEstado({ fase: "erro", mensagem: r.mensagem_erro || "Falha técnica no bot (timeout ou captcha)." });
+            toast.warning("⚠️ RPA: erro técnico na coleta.");
+          } else {
+            // erro_logico ou desconhecido
+            const erroInterno = r.mensagem_erro?.includes("_UCWrapper") || r.mensagem_erro?.includes("unexpected keyword");
+            if (erroInterno) {
+              setEstado({ fase: "erro", mensagem: "O RPA ainda não tem suporte para este formato de número de processo." });
+              toast.warning("⚠️ RPA: processo incompatível com esta versão do bot.");
+            } else {
+              setEstado({ fase: "erro", mensagem: r.mensagem_erro || "RPA não encontrou o processo." });
+              toast.warning(`⚠️ RPA: ${r.mensagem_erro || "sem resultado"}`);
+            }
+          }
         }
       );
 
-      if (resultado.resultados.length > 0) {
-        const r = resultado.resultados[0];
-        // Normaliza erros internos do backend Python para mensagem amigável
-        const erroInterno = r.mensagem_erro?.includes("_UCWrapper") || r.mensagem_erro?.includes("unexpected keyword");
-        if (r.status === "sucesso") {
-          setEstado({ fase: "concluido", resultado: r });
-          toast.success("✅ Enriquecimento concluído!");
-        } else if (erroInterno) {
-          setEstado({ fase: "erro", mensagem: "O RPA ainda não tem suporte para este formato de número de processo. Tente cadastrar manualmente." });
-          toast.warning("⚠️ RPA: processo incompatível com esta versão do bot.");
-        } else {
-          setEstado({ fase: "erro", mensagem: r.mensagem_erro || "RPA não encontrou o processo." });
-          toast.warning(`⚠️ RPA retornou: ${r.mensagem_erro || "sem resultado"}`);
+      // Fallback: se o job concluiu mas onResult nunca foi chamado (resultado vazio)
+      if (!resultadoEntregue) {
+        if (resultado.resultados.length === 0) {
+          setEstado({ fase: "erro", mensagem: "Nenhum resultado retornado pelo RPA." });
         }
-      } else {
-        setEstado({ fase: "erro", mensagem: "Nenhum resultado retornado pelo RPA." });
       }
     } catch (err: any) {
       setEstado({ fase: "erro", mensagem: err.message });
@@ -129,7 +161,7 @@ export function RpaEnrichmentPanel({ processo, tribunalAlias }: Props) {
             variant="outline"
             size="sm"
             onClick={handleEnriquecer}
-            className="flex-1 border-violet-500/40 text-violet-700 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30"
+            className="flex-1 border-primary/40 text-primary hover:bg-primary/5"
           >
             <Zap className="w-3.5 h-3.5 mr-2" />
             Enriquecer ({tribunalAlias.toUpperCase()})
@@ -148,7 +180,7 @@ export function RpaEnrichmentPanel({ processo, tribunalAlias }: Props) {
 
       {/* Disparando */}
       {estado.fase === "disparando" && (
-        <div className="flex items-center gap-2 text-sm text-violet-600 dark:text-violet-400 p-2 border border-violet-200 dark:border-violet-800 rounded bg-violet-50 dark:bg-violet-950/20">
+        <div className="flex items-center gap-2 text-sm text-primary p-2 border border-primary/20 rounded bg-primary/5">
           <Loader2 className="w-4 h-4 animate-spin shrink-0" />
           <span>Acionando RPA...</span>
         </div>
@@ -156,7 +188,7 @@ export function RpaEnrichmentPanel({ processo, tribunalAlias }: Props) {
 
       {/* Aguardando */}
       {estado.fase === "aguardando" && (
-        <div className="flex items-center gap-2 text-sm text-violet-600 dark:text-violet-400 p-2 border border-violet-200 dark:border-violet-800 rounded bg-violet-50 dark:bg-violet-950/20">
+        <div className="flex items-center gap-2 text-sm text-primary p-2 border border-primary/20 rounded bg-primary/5">
           <Loader2 className="w-4 h-4 animate-spin shrink-0" />
           <span>
             RPA em execução — {estado.job.concluidos}/{estado.job.total} concluídos...
@@ -179,15 +211,22 @@ export function RpaEnrichmentPanel({ processo, tribunalAlias }: Props) {
 
       {/* Resultado enriquecido */}
       {estado.fase === "concluido" && (
-        <Card className="border-violet-200 dark:border-violet-800 bg-violet-50/30 dark:bg-violet-950/10">
+        <Card className="border-primary/20 bg-primary/5">
           <CardHeader className="pb-2 pt-3 px-4">
-            <CardTitle className="text-sm flex items-center gap-2 text-violet-700 dark:text-violet-400">
+            <CardTitle className="text-sm flex items-center gap-2 text-primary">
               <Bot className="w-4 h-4" />
               Dados Enriquecidos pelo RPA
-              <Badge variant="outline" className="text-xs ml-auto border-green-500 text-green-600">
-                <CheckCircle2 className="w-3 h-3 mr-1" />
-                {(estado.resultado.tempo_ms / 1000).toFixed(1)}s
-              </Badge>
+              {estado.diasCache !== undefined ? (
+                <Badge variant="outline" className="text-xs ml-auto border-primary/40 text-primary">
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  {estado.diasCache === 0 ? "Cache de hoje" : `Cache de ${estado.diasCache}d atrás`}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs ml-auto border-green-500 text-green-600">
+                  <CheckCircle2 className="w-3 h-3 mr-1" />
+                  {(estado.resultado.tempo_ms / 1000).toFixed(1)}s
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
 
@@ -269,7 +308,7 @@ export function RpaEnrichmentPanel({ processo, tribunalAlias }: Props) {
                   {expandidoMovs && (
                     <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
                       {estado.resultado.movimentacoes.map((m, i) => (
-                        <div key={i} className="border-l-2 border-violet-300 dark:border-violet-700 pl-2 text-xs">
+                        <div key={i} className="border-l-2 border-primary/30 pl-2 text-xs">
                           <p className="font-medium">{m.descricao || m.nome || m.tipo || "Movimento"}</p>
                           {(m.data || m.dataHora) && (
                             <p className="text-muted-foreground">
@@ -300,7 +339,7 @@ export function RpaEnrichmentPanel({ processo, tribunalAlias }: Props) {
               <Button
                 size="sm"
                 onClick={() => setModalCadastro(true)}
-                className="shrink-0 bg-violet-600 hover:bg-violet-700"
+                className="shrink-0"
               >
                 <FilePlus className="w-3.5 h-3.5 mr-1.5" />
                 Cadastrar

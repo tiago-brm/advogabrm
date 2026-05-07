@@ -17,7 +17,8 @@ import {
   Workflow,
   ListTodo,
   Edit3,
-  Eye
+  Eye,
+  Bot,
 } from "lucide-react";
 import {
   Sidebar,
@@ -60,7 +61,9 @@ const secondaryItems = [
 const legalopsItems = [
   { title: "Catálogo", url: "/bpmn/catalogo", icon: Workflow },
   { title: "Minhas Tarefas", url: "/bpmn/tarefas", icon: ListTodo },
+  { title: "Monitor RPA", url: "/bpmn/rpa-monitor", icon: Bot },
   { title: "Modelador BPMN", url: "/admin/bpmn-modeler", icon: Edit3, role: "SUPER_ADMIN" },
+  { title: "Workflow Editor", url: "/admin/workflow-editor", icon: Workflow, role: "SUPER_ADMIN" },
 ];
 
 export function AppSidebar() {
