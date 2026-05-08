@@ -100,50 +100,146 @@ export type Database = {
       }
       clientes: {
         Row: {
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
+          complemento: string | null
+          cpf_cnpj: string | null
           created_at: string
+          data_nascimento: string | null
           data_registro: string
           email: string
           endereco: string | null
+          estado: string | null
           id: string
+          logradouro: string | null
           nome: string
+          numero: string | null
+          observacoes: string | null
+          origem: string | null
           processos_ativos: number
+          profissao: string | null
+          razao_social: string | null
+          rg: string | null
           status: Database["public"]["Enums"]["cliente_status"]
           telefone: string | null
+          telefone_secundario: string | null
+          tipo_pessoa: string
           ultimo_contato: string | null
           updated_at: string
           user_id: string
+          whatsapp: string | null
         }
         Insert: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          cpf_cnpj?: string | null
           created_at?: string
+          data_nascimento?: string | null
           data_registro?: string
           email: string
           endereco?: string | null
+          estado?: string | null
           id?: string
+          logradouro?: string | null
           nome: string
+          numero?: string | null
+          observacoes?: string | null
+          origem?: string | null
           processos_ativos?: number
+          profissao?: string | null
+          razao_social?: string | null
+          rg?: string | null
           status?: Database["public"]["Enums"]["cliente_status"]
           telefone?: string | null
+          telefone_secundario?: string | null
+          tipo_pessoa?: string
           ultimo_contato?: string | null
           updated_at?: string
           user_id: string
+          whatsapp?: string | null
         }
         Update: {
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          cpf_cnpj?: string | null
           created_at?: string
+          data_nascimento?: string | null
           data_registro?: string
           email?: string
           endereco?: string | null
+          estado?: string | null
           id?: string
+          logradouro?: string | null
           nome?: string
+          numero?: string | null
+          observacoes?: string | null
+          origem?: string | null
           processos_ativos?: number
+          profissao?: string | null
+          razao_social?: string | null
+          rg?: string | null
           status?: Database["public"]["Enums"]["cliente_status"]
           telefone?: string | null
+          telefone_secundario?: string | null
+          tipo_pessoa?: string
           ultimo_contato?: string | null
           updated_at?: string
           user_id?: string
+          whatsapp?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "clientes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cliente_interacoes: {
+        Row: {
+          id: string
+          cliente_id: string
+          user_id: string
+          tipo: string
+          descricao: string
+          data_interacao: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          cliente_id: string
+          user_id: string
+          tipo: string
+          descricao: string
+          data_interacao?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          cliente_id?: string
+          user_id?: string
+          tipo?: string
+          descricao?: string
+          data_interacao?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cliente_interacoes_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cliente_interacoes_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
