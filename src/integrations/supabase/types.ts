@@ -356,6 +356,111 @@ export type Database = {
           },
         ]
       }
+      equipe: {
+        Row: {
+          id: string
+          user_id: string
+          tenant_id: string | null
+          profile_id: string | null
+          nome: string
+          email: string
+          telefone: string | null
+          whatsapp: string | null
+          cargo: string
+          departamento: string
+          nivel_acesso: string | null
+          pode_assinar: boolean
+          data_admissao: string | null
+          salario: number | null
+          tipo_contrato: string | null
+          status: string
+          cpf: string | null
+          oab: string | null
+          oab_uf: string | null
+          data_nascimento: string | null
+          cep: string | null
+          logradouro: string | null
+          numero: string | null
+          complemento: string | null
+          bairro: string | null
+          cidade: string | null
+          estado: string | null
+          endereco: string | null
+          observacoes: string | null
+          foto_url: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          tenant_id?: string | null
+          profile_id?: string | null
+          nome: string
+          email: string
+          telefone?: string | null
+          whatsapp?: string | null
+          cargo: string
+          departamento: string
+          nivel_acesso?: string | null
+          pode_assinar?: boolean
+          data_admissao?: string | null
+          salario?: number | null
+          tipo_contrato?: string | null
+          status?: string
+          cpf?: string | null
+          oab?: string | null
+          oab_uf?: string | null
+          data_nascimento?: string | null
+          cep?: string | null
+          logradouro?: string | null
+          numero?: string | null
+          complemento?: string | null
+          bairro?: string | null
+          cidade?: string | null
+          estado?: string | null
+          endereco?: string | null
+          observacoes?: string | null
+          foto_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          tenant_id?: string | null
+          profile_id?: string | null
+          nome?: string
+          email?: string
+          telefone?: string | null
+          whatsapp?: string | null
+          cargo?: string
+          departamento?: string
+          nivel_acesso?: string | null
+          pode_assinar?: boolean
+          data_admissao?: string | null
+          salario?: number | null
+          tipo_contrato?: string | null
+          status?: string
+          cpf?: string | null
+          oab?: string | null
+          oab_uf?: string | null
+          data_nascimento?: string | null
+          cep?: string | null
+          logradouro?: string | null
+          numero?: string | null
+          complemento?: string | null
+          bairro?: string | null
+          cidade?: string | null
+          estado?: string | null
+          endereco?: string | null
+          observacoes?: string | null
+          foto_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       message_templates: {
         Row: {
           content: string
@@ -458,6 +563,8 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          role: string
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -465,6 +572,8 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          role?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -472,6 +581,8 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          role?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: []

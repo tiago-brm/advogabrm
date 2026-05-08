@@ -13,10 +13,10 @@ export type Tenant = {
 type TenantContextType = {
   tenant: Tenant | null;           // tenant sendo exibido (pode ser preview)
   realTenant: Tenant | null;       // tenant real do usuário logado
-  role: "SUPER_ADMIN" | "MASTER" | "USER" | null;
+  role: "SUPER_ADMIN" | "MASTER" | "ADMIN" | "ADVOGADO" | "ESTAGIARIO" | "READONLY" | null;
   loading: boolean;
-  isPreviewMode: boolean;          // true quando SUPER_ADMIN está visualizando outro tenant
-  previewTenant: (t: Tenant | null) => void; // troca o tenant exibido
+  isPreviewMode: boolean;
+  previewTenant: (t: Tenant | null) => void;
   refreshTenant: () => Promise<void>;
 };
 
@@ -69,7 +69,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [realTenant, setRealTenant] = useState<Tenant | null>(null);
   const [overrideTenant, setOverrideTenant] = useState<Tenant | null>(null); // preview
-  const [role, setRole] = useState<"SUPER_ADMIN" | "MASTER" | "USER" | null>(null);
+  const [role, setRole] = useState<"SUPER_ADMIN" | "MASTER" | "ADMIN" | "ADVOGADO" | "ESTAGIARIO" | "READONLY" | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Tenant efetivo = override (preview) ou o real

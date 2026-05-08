@@ -38,32 +38,41 @@ import { useTenant } from "@/contexts/TenantContext";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { TenantSwitcher } from "@/components/TenantSwitcher";
+import { can, isAtLeast, type AppRole } from "@/lib/permissions";
 
-const menuItems = [
-  { title: "Dashboard", url: "/", icon: Home },
-  { title: "Clientes", url: "/clientes", icon: Users },
-  { title: "Processos", url: "/processos", icon: Briefcase },
-  { title: "Consulta Datajud", url: "/consulta-processos", icon: Search },
-  { title: "Monitoramento", url: "/monitoramento", icon: Eye },
-  { title: "Audiências", url: "/audiencias", icon: Calendar },
-  { title: "Tarefas", url: "/tarefas", icon: Clock },
-  { title: "Documentos", url: "/documentos", icon: FileText },
+function itemVisible(item: MenuItem, role: AppRole | null): boolean {
+  if (item.minRole && !isAtLeast(role, item.minRole)) return false;
+  if (item.minAction && !can(role, item.minAction)) return false;
+  return true;
+}
+
+type MenuItem = { title: string; url: string; icon: React.ElementType; minAction?: string; minRole?: AppRole }
+
+const menuItems: MenuItem[] = [
+  { title: "Dashboard",        url: "/",                   icon: Home },
+  { title: "Clientes",         url: "/clientes",           icon: Users,       minAction: "view:cliente" },
+  { title: "Processos",        url: "/processos",          icon: Briefcase,   minAction: "view:processo" },
+  { title: "Consulta Datajud", url: "/consulta-processos", icon: Search,      minAction: "view:processo" },
+  { title: "Monitoramento",    url: "/monitoramento",      icon: Eye,         minAction: "view:processo" },
+  { title: "Audiências",       url: "/audiencias",         icon: Calendar,    minAction: "view:audiencia" },
+  { title: "Tarefas",          url: "/tarefas",            icon: Clock,       minAction: "view:tarefa" },
+  { title: "Documentos",       url: "/documentos",         icon: FileText,    minAction: "view:documento" },
 ];
 
-const secondaryItems = [
-  { title: "Agenda", url: "/agenda", icon: CalendarDays },
-  { title: "Equipe", url: "/equipe", icon: UserCheck },
-  { title: "Financeiro", url: "/financeiro", icon: DollarSign },
-  { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
-  { title: "Mensagens", url: "/mensagens", icon: MessageSquare },
+const secondaryItems: MenuItem[] = [
+  { title: "Agenda",     url: "/agenda",     icon: CalendarDays },
+  { title: "Equipe",     url: "/equipe",     icon: UserCheck,   minAction: "view:equipe" },
+  { title: "Financeiro", url: "/financeiro", icon: DollarSign,  minAction: "view:financeiro" },
+  { title: "Relatórios", url: "/relatorios", icon: BarChart3,   minAction: "view:financeiro" },
+  { title: "Mensagens",  url: "/mensagens",  icon: MessageSquare },
 ];
 
-const legalopsItems = [
-  { title: "Catálogo", url: "/bpmn/catalogo", icon: Workflow },
-  { title: "Minhas Tarefas", url: "/bpmn/tarefas", icon: ListTodo },
-  { title: "Monitor RPA", url: "/bpmn/rpa-monitor", icon: Bot },
-  { title: "Modelador BPMN", url: "/admin/bpmn-modeler", icon: Edit3, role: "SUPER_ADMIN" },
-  { title: "Workflow Editor", url: "/admin/workflow-editor", icon: Workflow, role: "SUPER_ADMIN" },
+const legalopsItems: MenuItem[] = [
+  { title: "Catálogo",        url: "/bpmn/catalogo",         icon: Workflow,  minAction: "view:workflow" },
+  { title: "Minhas Tarefas",  url: "/bpmn/tarefas",          icon: ListTodo,  minAction: "view:tarefa" },
+  { title: "Monitor RPA",     url: "/bpmn/rpa-monitor",      icon: Bot,       minAction: "view:workflow" },
+  { title: "Modelador BPMN",  url: "/admin/bpmn-modeler",    icon: Edit3,     minRole: "SUPER_ADMIN" },
+  { title: "Workflow Editor", url: "/admin/workflow-editor",  icon: Workflow,  minRole: "SUPER_ADMIN" },
 ];
 
 export function AppSidebar() {
@@ -112,7 +121,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {menuItems.filter(i => itemVisible(i, role as AppRole | null)).map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
@@ -135,7 +144,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {secondaryItems.map((item) => (
+              {secondaryItems.filter(i => itemVisible(i, role as AppRole | null)).map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
@@ -157,22 +166,19 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {legalopsItems.map((item) => {
-                if (item.role && role !== item.role) return null;
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      className={location.pathname === item.url ? "bg-primary/10 text-primary" : ""}
-                    >
-                      <Link to={item.url} className="flex items-center gap-3">
-                        <item.icon className="w-4 h-4" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {legalopsItems.filter(i => itemVisible(i, role as AppRole | null)).map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    className={location.pathname === item.url ? "bg-primary/10 text-primary" : ""}
+                  >
+                    <Link to={item.url} className="flex items-center gap-3">
+                      <item.icon className="w-4 h-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
